@@ -10,14 +10,15 @@ A linguagem `go` possui algumas estruturas recomendadas e especificas da própri
 ```text
 cmd/
 ├─ bff/
+│  ├─ main.go
 internal/
 ├─ controller/
 ├─ domain/
 │  ├─ service/
-infra/
-├─ service/
-shared/
-├─ middleware/
+├─ infra/
+│  ├─ service/
+├─ shared/
+│  ├─ middleware/
 ```
 
 No momento, a implementação da aplicação se resume a apenas a interface `ProdutoService` implementando o método `BuscarDadosProduto` que retorna um response `BuscarDadosProdutoResponse` mesclando e unificando os retornos de `midia` e `preco`:

@@ -14,14 +14,15 @@ The `go` language has some recommended structures specific to the language itsel
 ```text
 cmd/
 ├─ bff/
+│  ├─ main.go
 internal/
 ├─ controller/
 ├─ domain/
 │  ├─ service/
-infra/
-├─ service/
-shared/
-├─ middleware/
+├─ infra/
+│  ├─ service/
+├─ shared/
+│  ├─ middleware/
 ```
 
 At the moment, the implementation of the application boils down to just the `ProductService | ProdutoService` interface implementing the `FetchProductData | BuscarDadosProduto` method which returns a `FetchProductDataResponse | BuscarDadosProdutoResponse` response merging and unifying the `media` and `price` outbound request results.
