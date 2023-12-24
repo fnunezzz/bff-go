@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 
 	interfaces "github.com/fnunezzz/bff_go/internal/domain/service"
 )
@@ -19,22 +20,25 @@ func NewProdutoService() interfaces.ProdutoService {
 	return &produtoService{}
 }
 
-func (p *produtoService) buscarPreco(skuList []string) (*interfaces.Preco, error) {
+func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
 	requestURL := fmt.Sprintf("%s/core/preco", os.Getenv("PRECO_URL"))
 	// Chamada ao preco
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		return nil, err
+		channel <- err
+		waitGroup.Done()
 	}
 	res, err := http.DefaultClient.Do(req)
 	
 	if err != nil {
-		return nil, err
+		channel <- err
+		waitGroup.Done()
 	}
 	
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		channel <- err
+		waitGroup.Done()
 	}
 	
 
@@ -42,39 +46,57 @@ func (p *produtoService) buscarPreco(skuList []string) (*interfaces.Preco, error
 	json.Unmarshal(body, &precos)
 	
 	if len(precos.Data) == 0 {
-		return nil, errors.New("Nenhum produto encontrado")
+		channel <- errors.New("Nenhum produto encontrado")
 	}
-	return precos, nil
-
+	channel <- precos
+	waitGroup.Done()
 }
 
-func (p *produtoService) buscarMidia(skuList []string) (*interfaces.Midia, error){
+func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
 	// chamada ao midia
 	requestURL := fmt.Sprintf("%s/core/imagem", os.Getenv("MIDIA_URL"))
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		return nil, err
+		channel <- err
+		waitGroup.Done()
 	}
 
 	res, err := http.DefaultClient.Do(req)
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err 
+		channel <- err 
+		waitGroup.Done()
 	}
 	midias := &interfaces.Midia{}
 	json.Unmarshal(body, &midias)
-	return midias, nil
+	
+	channel <- midias
+	waitGroup.Done()
 }
 
 func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.BuscarDadosProdutoResponse, error) {
+	response := &interfaces.BuscarDadosProdutoResponse{}
+	precos := &interfaces.Preco{}
+	midias := &interfaces.Midia{}
+	channel := make(chan any, 2)
+	waitGroup := &sync.WaitGroup{}
 	
-	precos, err := p.buscarPreco(skuList)
+	waitGroup.Add(2)
 
-	if err != nil {
-		return nil, err
+	go p.buscarPreco(skuList, channel, waitGroup)
+	go p.buscarMidia(skuList, channel, waitGroup)
+	waitGroup.Wait() // block ate duas chamadas termianrem
+	close(channel)
+
+	for resp := range channel {
+		if p, ok := resp.(*interfaces.Preco); ok {
+			precos = p
+		} else if m, ok := resp.(*interfaces.Midia); ok {
+			midias = m
+		}
 	}
-
+	
 	var produtos []interfaces.Produto
 	for _, preco := range precos.Data {
 		produto := &interfaces.Produto{}
@@ -83,13 +105,8 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 		produtos = append(produtos, *produto)
 	}
 	
-	response := &interfaces.BuscarDadosProdutoResponse{}
 	response.Data = produtos
 
-	midias, err := p.buscarMidia(skuList)
-	if err != nil {
-		return nil, err
-	}
 	
 	for _, midia := range midias.Data {
 		exists := false
