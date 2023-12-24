@@ -1,3 +1,5 @@
+[![Run tests](https://github.com/fnunezzz/bff-go/actions/workflows/tests.yml/badge.svg)](https://github.com/fnunezzz/bff-go/actions/workflows/tests.yml)
+
 # BFF Go
 
 The code base is in PT-BR as the POC was made with the intention of being read by developers with various levels of english proficiency but full Portuguese fluency.
