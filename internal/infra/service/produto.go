@@ -19,7 +19,7 @@ func NewProdutoService() interfaces.ProdutoService {
 	return &produtoService{}
 }
 
-func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.BuscarDadosProdutoResponse, error) {
+func (p *produtoService) buscarPreco(skuList []string) (*interfaces.Preco, error) {
 	requestURL := fmt.Sprintf("%s/core/preco", os.Getenv("PRECO_URL"))
 	// Chamada ao preco
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -44,8 +44,36 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 	if len(precos.Data) == 0 {
 		return nil, errors.New("Nenhum produto encontrado")
 	}
+	return precos, nil
 
-	response := &interfaces.BuscarDadosProdutoResponse{}
+}
+
+func (p *produtoService) buscarMidia(skuList []string) (*interfaces.Midia, error){
+	// chamada ao midia
+	requestURL := fmt.Sprintf("%s/core/imagem", os.Getenv("MIDIA_URL"))
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err 
+	}
+	midias := &interfaces.Midia{}
+	json.Unmarshal(body, &midias)
+	return midias, nil
+}
+
+func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.BuscarDadosProdutoResponse, error) {
+	
+	precos, err := p.buscarPreco(skuList)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var produtos []interfaces.Produto
 	for _, preco := range precos.Data {
@@ -54,25 +82,15 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 		produto.Preco = preco.Preco
 		produtos = append(produtos, *produto)
 	}
-
+	
+	response := &interfaces.BuscarDadosProdutoResponse{}
 	response.Data = produtos
 
-	// chamada ao midia
-	requestURL = fmt.Sprintf("%s/core/imagem", os.Getenv("MIDIA_URL"))
-	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
+	midias, err := p.buscarMidia(skuList)
 	if err != nil {
-		return response, err // todo posso ter retornos parciais
+		return nil, err
 	}
 	
-	res, err = http.DefaultClient.Do(req)
-
-	body, err = io.ReadAll(res.Body)
-	if err != nil {
-		return response, err // todo posso ter retornos parciais
-	}
-	midias := &interfaces.Midia{}
-	json.Unmarshal(body, &midias)
-
 	for _, midia := range midias.Data {
 		exists := false
 		for i, produto := range response.Data {
