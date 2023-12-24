@@ -1,0 +1,17 @@
+name: Run tests
+
+on:
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
+
+jobs:
+    build:
+        runs-on: golang:1.21-alpine
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: test-coverage
+              run: make test
