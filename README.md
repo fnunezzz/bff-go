@@ -48,7 +48,7 @@ At the moment, the implementation of the application boils down to just the `Pro
 
 It was done using version `1.21.3`
 
-As the application is only a POC at the moment, the functionality is being tested in the `product_test | produto_teste` file. It tests the implementation and grouping of data from the `media` and `price` services in various use cases.
+As the application is only a POC at the moment, the functionality is being tested in the `product_test | produto_test` file. It tests the implementation and grouping of data from the `media` and `price` services in various use cases.
 
 To run:
 
