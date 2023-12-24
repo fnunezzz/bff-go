@@ -20,6 +20,7 @@ func NewProdutoService() interfaces.ProdutoService {
 	return &produtoService{}
 }
 
+// Requisitando o serviço de preco
 func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
 	requestURL := fmt.Sprintf("%s/core/preco", os.Getenv("PRECO_URL"))
 	// Chamada ao preco
@@ -52,7 +53,7 @@ func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGro
 		waitGroup.Done()
 		return
 	}
-	
+
 	if len(precos.Data) == 0 {
 		channel <- errors.New("Nenhum produto encontrado")
 		waitGroup.Done()
@@ -62,6 +63,7 @@ func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGro
 	waitGroup.Done()
 }
 
+// Requisitando o serviço de midia
 func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
 	// chamada ao midia
 	requestURL := fmt.Sprintf("%s/core/imagem", os.Getenv("MIDIA_URL"))
@@ -95,16 +97,19 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 	response := &interfaces.BuscarDadosProdutoResponse{}
 	precos := &interfaces.Preco{}
 	midias := &interfaces.Midia{}
-	channel := make(chan any, 2)
-	waitGroup := &sync.WaitGroup{}
-	
-	waitGroup.Add(2)
+	channel := make(chan any, 2) // Criando um canal de dois processos em paralelo
+	waitGroup := &sync.WaitGroup{} // Criando um grupo de espera
+	waitGroup.Add(2) // Adicionando dois processos ao grupo de espera
 
+	// paralelizando as chamadas aos serviços externos
 	go p.buscarPreco(skuList, channel, waitGroup)
 	go p.buscarMidia(skuList, channel, waitGroup)
 	waitGroup.Wait() // block ate duas chamadas termianrem
 	close(channel)
 
+	// Buscando a resposta das chamadas (preco e midia)
+	// Equivalente a promise.all do Node.js
+	// Inferindo o tipo de resposta para atribuir a variavel correta
 	for resp := range channel {
 		if p, ok := resp.(*interfaces.Preco); ok {
 			precos = p
