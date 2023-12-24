@@ -21,28 +21,26 @@ func NewProdutoService() interfaces.ProdutoService {
 }
 
 // Requisitando o serviço de preco
-func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
+func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGroup *sync.WaitGroup) interface{} {
+	defer waitGroup.Done()
 	requestURL := fmt.Sprintf("%s/core/preco", os.Getenv("PRECO_URL"))
 	// Chamada ao preco
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	res, err := http.DefaultClient.Do(req)
 	
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	
 
@@ -50,28 +48,27 @@ func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGro
 	err = json.Unmarshal(body, &precos)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 
 	if len(precos.Data) == 0 {
-		channel <- errors.New("Nenhum produto encontrado")
-		waitGroup.Done()
-		return
+		err = errors.New("Nenhum produto encontrado")
+		channel <- err
+		return err
 	}
 	channel <- precos
-	waitGroup.Done()
+	return precos
 }
 
 // Requisitando o serviço de midia
-func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGroup *sync.WaitGroup) {
+func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGroup *sync.WaitGroup) interface{} {
+	defer waitGroup.Done()
 	// chamada ao midia
 	requestURL := fmt.Sprintf("%s/core/imagem", os.Getenv("MIDIA_URL"))
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	
 	res, err := http.DefaultClient.Do(req)
@@ -79,18 +76,16 @@ func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGro
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	midias := &interfaces.Midia{}
 	err = json.Unmarshal(body, &midias)
 	if err != nil {
 		channel <- err
-		waitGroup.Done()
-		return
+		return err
 	}
 	channel <- midias
-	waitGroup.Done()
+	return midias
 }
 
 func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.BuscarDadosProdutoResponse, error) {
