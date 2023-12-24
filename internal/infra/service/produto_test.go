@@ -34,7 +34,9 @@ func TestBuscarDadosProdutoUmProdutoSemImagem(t *testing.T) {
 			t.Fatalf("Expected to request '/core/preco' or '/core/imagem', got: %s", r.URL.Path)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": [{"sku": "1515", "preco": 10.00}]}`))
+		if r.URL.Path == "/core/preco" {
+			w.Write([]byte(`{"data": [{"sku": "1515", "preco": 10.00}]}`))
+		}
 	}))
 	defer server.Close()
 
@@ -59,6 +61,101 @@ func TestBuscarDadosProdutoUmProdutoSemImagem(t *testing.T) {
 	}
 	if value.Data[0].Preco != 10.00 {
 		t.Fatalf("Esperava que preco = 10.00")
+	}
+}
+
+// Teste para verificar se o serviço está retornando os dados corretos quando o serviço de midia da error
+//
+// Deve retornar 1 produto somente com preco
+func TestBuscarDadosProdutoUmProdutoMidiaError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/core/preco" && r.URL.Path != "/core/imagem" {
+			t.Fatalf("Expected to request '/core/preco' or '/core/imagem', got: %s", r.URL.Path)
+		}
+		if r.URL.Path == "/core/preco" {
+			w.Write([]byte(`{"data": [{"sku": "1515", "preco": 10.00}]}`))
+		}
+		
+		if r.URL.Path == "/core/imagem" {
+			w.Header().Set("Content-Length", "1")
+		}
+
+	}))
+	defer server.Close()
+
+	// redireciona as chamadas para o servidor mockado
+	os.Setenv("PRECO_URL", server.URL)
+	os.Setenv("MIDIA_URL", server.URL)
+	var a = []string{"1515", "1520"}
+	produtoService := NewProdutoService()
+	
+	value, err := produtoService.BuscarDadosProduto(a)
+	
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	
+	if value == nil {
+		t.Fatalf("Esperava que BuscarDadosProdutoResponse não fosse nulo")
+	}
+
+	if value.Data[0].Sku != "1515" {
+		t.Fatalf("Esperava que sku = 1515")
+	}
+	if value.Data[0].Preco != 10.00 {
+		t.Fatalf("Esperava que preco = 10.00")
+	}
+
+	if len(value.Data[0].Imagens) != 0 {
+		t.Fatalf("Esperava que imagens fosse vazio")
+	}
+}
+
+// Teste para verificar se o serviço está retornando os dados corretos quando o serviço de midia retorna 500
+//
+// Deve retornar 1 produto somente com preco
+func TestBuscarDadosProdutoUmProdutoMidiaStatus500(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/core/preco" && r.URL.Path != "/core/imagem" {
+			t.Fatalf("Expected to request '/core/preco' or '/core/imagem', got: %s", r.URL.Path)
+		}
+		if r.URL.Path == "/core/preco" {
+			w.Write([]byte(`{"data": [{"sku": "1515", "preco": 10.00}]}`))
+		}
+		
+		if r.URL.Path == "/core/imagem" {
+			w.WriteHeader(http.StatusInternalServerError)
+		
+		}
+
+	}))
+	defer server.Close()
+
+	// redireciona as chamadas para o servidor mockado
+	os.Setenv("PRECO_URL", server.URL)
+	os.Setenv("MIDIA_URL", server.URL)
+	var a = []string{"1515", "1520"}
+	produtoService := NewProdutoService()
+	
+	value, err := produtoService.BuscarDadosProduto(a)
+	
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	
+	if value == nil {
+		t.Fatalf("Esperava que BuscarDadosProdutoResponse não fosse nulo")
+	}
+
+	if value.Data[0].Sku != "1515" {
+		t.Fatalf("Esperava que sku = 1515")
+	}
+	if value.Data[0].Preco != 10.00 {
+		t.Fatalf("Esperava que preco = 10.00")
+	}
+
+	if len(value.Data[0].Imagens) != 0 {
+		t.Fatalf("Esperava que imagens fosse vazio")
 	}
 }
 

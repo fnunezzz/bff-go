@@ -27,26 +27,36 @@ func (p *produtoService) buscarPreco(skuList []string, channel chan any, waitGro
 	if err != nil {
 		channel <- err
 		waitGroup.Done()
+		return
 	}
 	res, err := http.DefaultClient.Do(req)
 	
 	if err != nil {
 		channel <- err
 		waitGroup.Done()
+		return
 	}
 	
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		channel <- err
 		waitGroup.Done()
+		return
 	}
 	
 
 	precos := &interfaces.Preco{}
-	json.Unmarshal(body, &precos)
+	err = json.Unmarshal(body, &precos)
+	if err != nil {
+		channel <- err
+		waitGroup.Done()
+		return
+	}
 	
 	if len(precos.Data) == 0 {
 		channel <- errors.New("Nenhum produto encontrado")
+		waitGroup.Done()
+		return
 	}
 	channel <- precos
 	waitGroup.Done()
@@ -59,18 +69,24 @@ func (p *produtoService) buscarMidia(skuList []string, channel chan any, waitGro
 	if err != nil {
 		channel <- err
 		waitGroup.Done()
+		return
 	}
-
+	
 	res, err := http.DefaultClient.Do(req)
-
+	
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		channel <- err 
+		channel <- err
 		waitGroup.Done()
+		return
 	}
 	midias := &interfaces.Midia{}
-	json.Unmarshal(body, &midias)
-	
+	err = json.Unmarshal(body, &midias)
+	if err != nil {
+		channel <- err
+		waitGroup.Done()
+		return
+	}
 	channel <- midias
 	waitGroup.Done()
 }
@@ -96,6 +112,7 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 			midias = m
 		}
 	}
+
 	
 	var produtos []interfaces.Produto
 	for _, preco := range precos.Data {
@@ -106,7 +123,7 @@ func (p *produtoService) BuscarDadosProduto(skuList []string) (*interfaces.Busca
 	}
 	
 	response.Data = produtos
-
+	
 	
 	for _, midia := range midias.Data {
 		exists := false
